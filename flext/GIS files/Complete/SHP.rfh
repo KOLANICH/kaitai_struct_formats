@@ -1,0 +1,99 @@
+% ArcInfo Shape file(SHP.rfh):Class: GIS files, Status: Complete, Last change: 11.09.2014 21:48:22
+% {"Author": "A.E.Hmelnov", "GENERATOR": "BinView (Win95; I) [AX]"}
+
+/* Information source:
+==================================================
+ArcView(R) Version 2 Shapefile Technical Description
+
+An ESRI White Paper
+==================================================
+*/
+
+include shp.rfi
+
+type
+
+TXPointM struc
+  TDouble X
+  TDouble Y
+  TDouble M
+ends
+
+TXPointZ struc
+  TDouble X
+  TDouble Y
+  TDouble Z
+  TDouble M
+ends
+
+TXPointTbl(N) array[@:N] of TXPoint
+
+TMTbl(N) struc
+  TDouble Vmin
+  TDouble Vmax
+  array[@:N] of TDouble Tbl
+ends
+
+TMultyPointData struc
+  TBBox BBox
+  long NumPoints
+  TXPointTbl(@.NumPoints) Points
+ends
+
+TMultyPointDataM struc
+  TMultyPointData A
+  TMTbl(@.A.NumPoints) M
+ends
+
+TMultyPointDataZ struc
+  TMultyPointData A
+  TMTbl(@.A.NumPoints) Z
+  TMTbl(@.A.NumPoints) M
+ends
+
+TArcData struc
+  TBBox BBox
+  long NumParts
+  long NumPoints
+  array[@.NumParts] of long Parts
+  array[@.NumParts] of struc
+     TXPointTbl((@@@.Parts[@:#+1] exc @@@.NumPoints)-@@@.Parts[@:#]) T
+   ends Points
+ends
+
+TArcDataM struc
+  TArcData A
+  TMTbl(@.A.NumPoints) M
+ends
+
+TArcDataZ struc
+  TArcData A
+  TMTbl(@.A.NumPoints) Z
+  TMTbl(@.A.NumPoints) M
+ends
+
+TShapeRecData(Len) struc
+  TShapeType ST
+  case @.ST of
+    Point: TXPoint
+    PointZ: TXPointZ
+    PointM: TXPointM
+    PolyLine,Polygon: TArcData
+    PolyLineM,PolygonM: TArcDataM
+    PolyLineZ,PolygonZ: TArcDataZ
+    MultiPoint: TMultyPointData
+    MultiPointZ: TMultyPointDataZ
+    MultiPointM: TMultyPointDataM
+  endc SD
+  (raw[]at &@;) rest
+ends:[@:Size=@:Len*2]:assert[@.ST=Hdr.ShapeType]
+
+TShapeRec struc
+  longrev RecNo
+  ulongrev Len
+  TShapeRecData(@.Len) Data
+ends
+
+data
+Hdr:Size (array of TShapeRec:[@:Size=FileSize-&@]) Tbl
+

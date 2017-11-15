@@ -1,0 +1,62 @@
+% COFF Archive (Library) File Format.(COFF_LIB.rfi):Class: Executable and Object, Status: Almost Complete, Last change: 19.06.1999 20:27:42
+% {"Author": "A.E.Hmelnov", "GENERATOR": "BinView (Win95; I) [AX]"}
+
+data
+0 array[8] of char ArchSign
+
+assert ArchSign='!<arch>'#10;
+descr ('COFF Archive (Library) File Format.',NL,
+  'Info Source: WinNT.h',NL,
+  'Info Source: MSDN Library Visual studio 6.0.\Specifications\Platforms\',NL,
+  '  Microsoft Portable Executable and Common Object File Format Specification',NL,
+  '    Revision 5.0 October 1997',NL)
+
+type
+
+IMAGE_ARCHIVE_MEMBER_HEADER struc pas
+  Name: array[16]of char,<32;     // File member name - `/' terminated.
+  Date: array[12]of char,<32;     // File member date - decimal.
+  UserID: array[6]of char,<32;    // File member user id - decimal.
+  GroupID: array[6]of char,<32;   // File member group id - decimal.
+  Mode: array[8]of char,<32;      // File member mode - octal.
+  Size: array[10]of char,<32;     // File member size - decimal.
+  EndHeader: array[2]of char; // String to end header.
+ends:assert[@.EndHeader='`'#10]
+
+set byteorder rev
+type
+
+ULongRev num+(4)
+
+IMAGE_ARCHIVE_MEMBER_Data1 struc
+  ULongRev NOfSymbols
+  array[@.NOfSymbols] of ULongRev NameMemberOffsets
+  array[@.NOfSymbols] of PChar Names
+  raw[] Rest
+ends
+
+set byteorder norm
+type
+
+IMAGE_ARCHIVE_MEMBER_Data2 struc
+  ULong NOfMembers
+  array[@.NOfMembers] of ULong MemberOffsets
+  ULong NOfSymbols 
+  array[@.NOfSymbols] of Word hNameMember
+  array[@.NOfSymbols] of PChar Names
+  raw[] Rest
+ends
+
+IMAGE_ARCHIVE_MEMBER_Block struc pas
+  H: IMAGE_ARCHIVE_MEMBER_HEADER
+  D: case (@:#+1)*(@.H.Name='/') of
+     1: IMAGE_ARCHIVE_MEMBER_Data1
+     2: IMAGE_ARCHIVE_MEMBER_Data2
+     else raw[]
+     endc
+  Al: align 2 at &@.D;
+ends:[@.D:Size=StrToInt(@.H.Size,10)]
+
+data
+8 array of IMAGE_ARCHIVE_MEMBER_Block:[@:Size=FileSize-8] Blocks
+

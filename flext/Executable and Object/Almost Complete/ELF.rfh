@@ -1,0 +1,457 @@
+% Executable and Linkable Format.(ELF.rfh):Class: Executable and Object, Status: Almost Complete, Last change: 02.08.2017 11:41:20
+% {"Author": "A.E.Hmelnov", "GENERATOR": "BinView (Win95; I) [AX]"}
+
+/*
+ *  Source:
+ */
+
+type
+
+TElfClass enum byte (
+  ELFCLASSNONE=0, //Invalid class
+  ELFCLASS32=1, //32-bit objects
+  ELFCLASS64=2 //64-bit objects
+)
+
+TElfEncoding enum byte (
+  ELFDATANONE=0, //Invalid data encoding
+  ELFDATA2LSB=1,
+  ELFDATA2MSB=2
+)
+
+TEVersionB enum Byte (
+  EV_NONE=0, //Invalid Version
+  EV_CURRENT=1 //Current version
+)
+
+TElfIdent struc
+  array[4] of char ei_magic
+  TElfClass ei_class //File class
+  TElfEncoding ei_encoding //Data Encoding
+  TEVersionB ei_version //File Version
+  array[9] of byte ei_pad //Padding bytes
+ends
+
+data
+
+0 TElfIdent Ident
+
+assert (Ident.ei_magic='ELF') and 
+  ((Ident.ei_class=TElfClass.ELFCLASS32)or(Ident.ei_class=TElfClass.ELFCLASS64))
+  and (Ident.ei_version=TEVersionB.EV_CURRENT);
+
+descr ('Executable and Linkable Format.',NL,
+  'Info Source: ELF.PS in (ELF11G.ZIP, www.wotsit.org).',NL,
+  'Info Source: Executable and Linkable Format (ELF), Tool Interface Standards (TIS), Portable Format Specification, Version 1.1',NL,
+  'Info Source: ELF-64 Object File Format, Version 1.5 Draft 2,May 27, 1998',NL,
+  'Info Source: ELF.H in Linux and SUN (Some addition machine specific).',NL)
+
+set byteorder rev=(Ident.ei_encoding=TElfEncoding.ELFDATA2MSB);
+
+type
+
+EHalf num+(2)
+EWord num+(4)
+ESWord num-(4)
+
+%$IF Ident.ei_class=TElfClass.ELFCLASS64;
+const 
+  MemWB = 8;
+
+type
+EAddr num+(8)
+EOff num+(8)
+
+%$ELSE
+const 
+  MemWB = 4;
+
+type
+EAddr num+(4)
+EOff num+(4)                             
+%$END
+
+const 
+  MemWidth = MemWB*8;
+
+type
+EXWord num+(MemWB)
+ESXWord num-(MemWB)
+
+TEType enum EHalf (
+  ET_NONE=0, //No file type
+  ET_REL=1,  //Relocatable file
+  ET_EXEC=2, //Executable file
+  ET_DYN=3,  //Shared object file
+  ET_CORE=4  //Core file
+) // else Processor-specific
+
+TEMachine enum EHalf (
+  EM_NONE=0, //No machine
+  EM_M32=1,  //AT&T WE 32100
+  EM_SPARC=2,//SUN SPARC
+  EM_386=3,  //Intel 80386
+  EM_68K=4,  //Motorola 68000
+  EM_88K=5,  //Motorola 88000
+  EM_486=6,  /*Intel 80486 (Perhaps disused)*/
+  EM_860=7,  //Intel 80860
+  EM_MIPS=8, //MIPS RS3000 (officially, big-endian only)
+  EM_S370=9, /* Amdahl */
+  EM_MIPS_RS4_BE=10,  /* MIPS R4000 big-endian */
+  EM_SPARC64=11, /* SPARC v9 (not official) 64-bit|RS6000 (in SUN`s elf.h) */
+  EM_PARISC=15, /* HPPA (PA-RISC)*/
+  EM_nCUBE=16, /* nCUBE */
+  EM_VPP500=17, /* Fujitsu VPP500 */
+  EM_SPARC32PLUS = 18, /* Sun SPARC 32+ */
+  EM_PPC=20, /* PowerPC */
+  EM_SPARCV9=43, /* Sun SPARC V9 (64-bit) */
+  EM_NUM=44,
+  EM_ALPHA=0x9026
+)
+
+TEVersion enum EWord (
+  EV_NONE=0, //Invalid Version
+  EV_CURRENT=1 //Current version
+)
+
+PProgHdrTbl ^TProgHdrTbl near=EOff
+PSectionsTbl ^TSectionsTbl near=EOff
+
+TSectionNDX enum EHalf (
+  SHN_UNDEF=0,
+  SHN_LORESERVE=0xff00,
+//  SHN_LOPROC=0xff00,
+  SHN_HIPROC=0xff1f,
+  SHN_ABS=0xfff1,
+  SHN_COMMON=0xfff2,
+  SHN_HIRESERVE=0xffff
+)
+
+TE_Machine_Flags forward //EWord
+
+TEHdr struc
+  TEType e_type
+  TEMachine e_machine
+  TEVersion e_version
+  EAddr e_entry     //Virt. addr of entry point (0 - No entry point)
+  PProgHdrTbl e_phoff //program header table's file offset (0 - No ph. offs.)
+  PSectionsTbl e_shoff     //section header table's file offset (0 - No sh. offs.)
+  TE_Machine_Flags e_flags     //processor-specific flags
+  EHalf e_ehsize    //Header size
+  EHalf e_phentsize //size of one entry in the program header table
+  EHalf e_phnum     //number of entries in the program header table
+  EHalf e_shentsize //section header size
+  EHalf e_shnum     //number of entries in the section header table
+  TSectionNDX e_shstrndx  //section header table index of the entry associated
+                    //with the section name string table (=SHN_UNDEF => No table).
+  raw[] rest
+ends:[@:Size=@.e_ehsize-0x10]
+
+data
+Ident:Size TEHdr Hdr
+
+type
+// Processor Specific definitions
+%$IF Hdr.e_machine=TEMachine.EM_386; //Intel 80386
+  include elf_386.rfi
+%$ELSIF Hdr.e_machine=TEMachine.EM_SPARC; //SPARC
+  include elfSPARC.rfi
+%$ELSIF Hdr.e_machine=TEMachine.EM_M32; //AT&T WE 32100
+  include elf_M32.rfi
+%$ELSIF Hdr.e_machine=TEMachine.EM_PPC; /* PowerPC */
+  include elf_ppc.rfi
+%$ELSE
+ type
+  TE_R_TYPE byte
+  TE_Machine_Flags EWord
+%$END Machine
+
+type
+//TStrNDX/*(hSec)*/ EWord//forward
+TSecNameNDX(refbase) ^pchar hideref near=EWord,ref=@+@:refbase; :
+  displ=(@^,'{',@,'}')
+
+TSectionType enum EWord (
+  SHT_NULL=0,
+  SHT_PROGBITS=1,
+  SHT_SYMTAB=2,
+  SHT_STRTAB=3,
+  SHT_RELA=4,
+  SHT_HASH=5,
+  SHT_DYNAMIC=6,
+  SHT_NOTE=7,
+  SHT_NOBITS=8,
+  SHT_REL=9,
+  SHT_SHLIB=10,
+  SHT_DYNSYM=11,
+  SHT_LOPROC=0x70000000,
+  SHT_HIPROC=0x7fffffff,
+  SHT_LOUSER=0x80000000,
+  SHT_HIUSER=0xffffffff
+)
+
+TSectionFlags set MemWidth of (
+  SHF_WRITE=0,
+  SHF_ALLOC=1,
+  SHF_EXECINSTR=2
+)
+
+/*
+const
+//TSection.sh_flags
+  SHF_WRITE=0x1
+  SHF_ALLOC=0x2
+  SHF_EXECINSTR=0x4
+  SHF_MASKPROC=0xf0000000 //Processor specific
+*/
+
+type
+
+//TRawSectionData(Sz) raw[@:Sz]
+TRawSectionData raw[]
+TSymTab(Sz,hSymSec) forward
+TERelTbl(Sz) forward
+TERelATbl(Sz) forward
+TENoteTbl(Sz) forward
+TDynamicSec(Sz,hSymSec) forward
+THashTblSec(Sz) forward
+
+TSectionData(Sz,Tp,hSymSec) case TSectionType @:Tp of
+  SHT_SYMTAB,SHT_DYNSYM: TSymTab(@:Sz,@:hSymSec)
+  SHT_REL: TERelTbl(@:Sz)
+  SHT_RELA: TERelATbl(@:Sz)
+  SHT_NOTE: TENoteTbl(@:Sz)
+  SHT_DYNAMIC: TDynamicSec(@:Sz,@:hSymSec)
+  SHT_HASH: THashTblSec(@:Sz)
+  else TRawSectionData(@:Sz)
+endc:[@:Size=@:Sz]
+
+PSectionData(Sz,Tp,hSymSec) ^TSectionData(@:Sz,@:Tp,@:hSymSec) nil:
+  (@:Tp=TSectionType.SHT_NOBITS)or(@:Tp=TSectionType.SHT_NULL)or(@=0) near=EOff
+
+TSection forward
+
+TSectionsTbl array[Hdr.e_shnum] of TSection
+
+TSectionNDXW ESWord()
+
+TSection struc
+// TStrNDX/*(Hdr.e_shstrndx)*/ sh_name
+  TSecNameNDX sh_name
+  TSectionType sh_type
+  TSectionFlags sh_flags
+  EAddr sh_addr
+  PSectionData(Tp=@.sh_type) sh_offset
+  EXWord sh_size
+  TSectionNDXW sh_link
+  case @.sh_type of
+    SHT_REL,SHT_RELA: TSectionNDXW
+  else ESWord
+  endc sh_info
+  EXWord sh_addralign
+  EXWord sh_entsize
+  raw[] sh_rest
+ends:[@:Size=Hdr.e_shentsize,@.sh_offset:Sz=@.sh_size,@.sh_name:refbase=
+  Hdr.e_shoff^[Hdr.e_shstrndx].sh_offset exc 0x10000000,
+  @.sh_offset:hSymSec=@.sh_link
+]:autoname=('SEC(',INT(@:#),')_',@.sh_name^)
+
+TSectionNDX enum TSectionNDX Hdr.e_shoff^[@].sh_name^;
+TSectionNDXW enum TSectionNDXW Hdr.e_shoff^[@].sh_name^;
+
+//TStrNDX/*(hSec)*/ ^pchar - Hdr.e_shoff^[/*@:hSec*/Hdr.e_shstrndx].
+//  sh_offset exc 0x10000000 hideref near=TStrNDX :displ=(@^,'{',@,'}')
+
+type
+
+TProgHdrType enum EWord (
+  PT_NULL=0,
+  PT_LOAD=1,
+  PT_DYNAMIC=2,
+  PT_INTERP=3,
+  PT_NOTE=4,
+  PT_SHLIB=5,
+  PT_PHDR=6,
+  PT_LOPROC=0x70000000,
+  PT_HIPROC=0x7fffffff
+)
+
+TProgHdrFlags set 32 of (
+  PF_X=0,
+  PF_W=1,
+  PF_R=2
+) //??? - guess values
+
+TProgHdrEntry struc
+  TProgHdrType p_type
+  EOff p_ofs
+  EAddr p_vaddr
+  EAddr p_paddr
+  EWord p_filesz
+  EWord p_memsz
+  TProgHdrFlags p_flags
+  EWord p_align
+  raw[] p_rest
+ends:[@:Size=Hdr.e_phentsize]
+
+TProgHdrTbl array[Hdr.e_phnum] of TProgHdrEntry
+
+//autoname
+//TSection .sh_name^ SEC_
+
+/*** Symbol tables ***/
+
+type
+
+TStrNDX(hSec) ^pchar hideref near=EWord,ref=@+Hdr.e_shoff^[@:hSec].sh_offset exc 0x10000000; :
+  displ=(@^,'{',@,'}')
+
+set byteorder norm
+type bit
+  TBit4 num+(4)
+
+//symbol's binding determines the linkage visibility and behavior
+//st_info shr 4
+
+TE_ST_Bind enum TBit4 (
+  STB_LOCAL=0, //Local symbols are not visible outside the file
+  STB_GLOBAL=1, //Global symbols are visible to all files
+  STB_WEAK=2, //Like global but with lower precedence
+  STB_LOPROC=13, //Processor-specific
+  STB_HIPROC=15  //
+)
+
+//symbol's type provides a general classi\256cation for the associated entity
+//st_info and 0xF
+TE_ST_Type enum TBit4 (
+  STT_NOTYPE=0, //Type is not specified
+  STT_OBJECT=1, //Data object (variable,array,etc.)
+  STT_FUNC=2, //Function or other executable code
+  STT_SECTION=3, //Section (for relocation and almost always are STB_LOCAL)
+  STT_FILE=4, //Name of the source file
+  STT_LOPROC=13, //Processor-specific
+  STT_HIPROC=15  //
+)
+
+TE_ST_Info struc
+  TE_ST_Type Typ
+  TE_ST_Bind Bind
+ends
+
+set byteorder rev=(Ident.ei_encoding=TElfEncoding.ELFDATA2MSB);
+
+type
+TSymEntry(hSymSec) struc
+// TStrNDX(@:hSymSec) st_name
+  TSecNameNDX(Hdr.e_shoff^[@:hSymSec].sh_offset exc 0x10000000) st_name
+  EAddr st_value
+  EWord st_size
+  TE_ST_Info st_info
+  byte st_other //=0
+  TSectionNDX st_sh_ndx
+ends
+
+TSymTab(Sz,hSymSec) array of TSymEntry(@:hSymSec):[@:Size=@:Sz]
+
+/*** Relocation ***/
+TE_R_SYM num+(3)
+
+%$IF Ident.ei_encoding=TElfEncoding.ELFDATA2MSB;
+TE_R_INFO struc
+  TE_R_SYM hSym
+  TE_R_TYPE Typ
+ends
+
+%$ELSE
+TE_R_INFO struc
+  TE_R_TYPE Typ
+  TE_R_SYM hSym
+ends
+
+%$END Rev
+
+type
+TERel struc
+  EAddr r_ofs
+  TE_R_INFO/*EWord*/ r_info
+ends
+
+TERelTbl(Sz) array of TERel:[@:Size=@:Sz]
+
+TERelA struc
+  EAddr r_ofs
+  TE_R_INFO/*EWord*/ r_info
+  ESWord r_addend
+ends
+
+TERelATbl(Sz) array of TERelA:[@:Size=@:Sz]
+
+/*** Notes ***/
+
+TNoteRec struc
+  EWord NameSz
+  EWord DescSz
+  EWord Typ
+  array[(@.NameSz+7)and 0xFFFFFFF8] of Char Name
+  array[(@.DescSz+7)and 0xFFFFFFF8] of Char Desc
+ends
+
+TENoteTbl(Sz) array of TNoteRec:[@:Size=@:Sz]
+
+/*** Dynamic ***/
+
+TDynRecTag enum ESWord (
+DT_NULL=0, //ignored | end of array
+DT_NEEDED=1, //d_val
+DT_PLTRELSZ=2,//d_val
+DT_PLTGOT=3, //d_ptr
+DT_HASH=4, //d_ptr
+DT_STRTAB=5, //d_ptr |address of the string table
+DT_SYMTAB=6, //d_ptr
+DT_RELA=7, //d_ptr
+DT_RELASZ=8, //d_val
+DT_RELAENT=9, //d_val
+DT_STRSZ=10, //d_val
+DT_SYMENT=11, //d_val
+DT_INIT=12, //d_ptr
+DT_FINI=13, //d_ptr
+DT_SONAME=14, //d_val
+DT_RPATH=15, //d_val
+DT_SYMBOLIC=16, //ignored
+DT_REL=17, //d_ptr
+DT_RELSZ=18, //d_val
+DT_RELENT=19, //d_val
+DT_PLTREL=20, //d_val
+DT_DEBUG=21, //d_ptr
+DT_TEXTREL=22, //ignored
+DT_JMPREL=23, //d_ptr
+DT_LOPROC=0x70000000,//unspecified
+DT_HIPROC=0x7fffffff //unspecified
+)
+
+TEDynRec(hSymSec) struc
+  TDynRecTag d_tag
+  case @.d_tag of
+   DT_NEEDED,DT_SONAME,DT_RPATH: //TStrNDX(@@:hSymSec)
+     TSecNameNDX(Hdr.e_shoff^[@@:hSymSec].sh_offset /*exc 0x10000000*/)
+  else EWord
+  endc d_val
+ends
+
+TEDynTbl(hSymSec) array of TEDynRec(@:hSymSec) ?@.d_tag=TDynRecTag.DT_NULL;
+
+TDynamicSec(Sz,hSymSec) struc
+  TEDynTbl(@:hSymSec) Tbl
+  raw[] rest
+ends:[@:Size=@:Sz]
+
+/*** Hash table ***/
+
+THashTblSec(Sz) struc
+  ESWord nbucket
+  ESWord nchain
+  array[@.nbucket] of ESWord bucket
+  array[@.nchain] of ESWord chain
+  raw[] rest
+ends:[@:Size=@:Sz]
+
