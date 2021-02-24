@@ -15,7 +15,7 @@ meta:
     rfc: 2083
     wikidata: Q178051
   license: CC0-1.0
-  ks-version: 0.8
+  ks-version: '0.9'
   endian: be
 seq:
   # https://www.w3.org/TR/PNG/#5PNG-file-signature
@@ -34,8 +34,8 @@ seq:
   # The rest of the chunks
   - id: chunks
     type: chunk
-    repeat: until
-    repeat-until: _.type == "IEND" or _io.eof
+    repeat:
+      until: _.type == "IEND" or _io.eof
 types:
   chunk:
     seq:

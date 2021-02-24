@@ -10,6 +10,7 @@ meta:
     - linux
   license: CC0-1.0
   endian: le
+  ks-version: 0.9
 instances:
   # http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/Documentation/filesystems/ext2.txt#n106
   bg1:
@@ -26,11 +27,8 @@ types:
       # http://www.nongnu.org/ext2-doc/ext2.html#BLOCK-GROUP-DESCRIPTOR-TABLE
       - id: block_groups
         type: bgd
-        repeat: expr
-        repeat-expr: super_block.block_group_count
-  # http://www.nongnu.org/ext2-doc/ext2.html#super_block
-  # http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/fs/ext2/ext2.h#n416
-  # https://ext4.wiki.kernel.org/index.php/Ext4_Disk_Layout#The_Super_Block
+        repeat:
+          expr: super_block.block_group_count
   super_block_struct:
     seq:
       - id: inodes_count
@@ -125,8 +123,8 @@ types:
 #    -- Directory Indexing Support --
       - id: hash_seed
         type: u4
-        repeat: expr
-        repeat-expr: 4
+        repeat:
+          expr: 4
       - id: def_hash_version
         type: u1
     instances:
@@ -172,8 +170,8 @@ types:
       inodes:
         pos: inode_table_block * _root.bg1.super_block.block_size
         type: inode
-        repeat: expr
-        repeat-expr: _root.bg1.super_block.inodes_per_group
+        repeat:
+          expr: _root.bg1.super_block.inodes_per_group
   inode:
     seq:
       - id: mode
@@ -202,8 +200,8 @@ types:
         type: u4
       - id: block
         type: block_ptr
-        repeat: expr
-        repeat-expr: 15
+        repeat:
+          expr: 15
       - id: generation
         type: u4
       - id: file_acl
