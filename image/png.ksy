@@ -26,7 +26,7 @@ seq:
   - id: ihdr_len
     contents: [0, 0, 0, 13]
   - id: ihdr_type
-    contents: "IHDR"
+    contents: IHDR
   - id: ihdr
     type: ihdr_chunk
   - id: ihdr_crc
