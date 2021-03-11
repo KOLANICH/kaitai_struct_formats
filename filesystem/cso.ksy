@@ -2,7 +2,7 @@ meta:
   id: cso
   title: Compressed ISO
   application:
-    - PSP
+    - Sony PSP custom firmwares
     - maxcso
   file-extension:
     - cso
@@ -43,11 +43,11 @@ types:
       - id: idx
         type: u8
     seq:
-      - id: val_
+      - id: raw
         type: u4
     instances:
       ptr:
-        value: (val_ & 0x7FFFFFFF) << _root.header.index_shift
+        value: (raw & 0x7FFFFFFF) << _root.header.index_shift
         doc: |
           The lower 31 bits of each index entry, when shifted left by `index_shift`, indicate the position within the file of the block's compressed data.  The length of the block is the difference between this entry's offset and the following index entry's offset value.
           Note that this size may be larger than the compressed or uncompressed data, if `index_shift` is greater than 0.  The space between blocks may be padded with any byte, but NUL is recommended.
@@ -56,23 +56,23 @@ types:
           Note that this size may be larger than the compressed or uncompressed data, if `index_shift` is greater than 0.  The space between blocks may be padded with any byte, but NUL is recommended.
           Note also that this means index entries must be incrementing.  Reordering or deduplication of blocks is not supported.
       msb:
-        value: val_ >> 31 == 1
+        value: raw >> 31 == 1
       size:
-        value: _root.indexes[idx+1].ptr-ptr
+        value: _root.indexes[idx+1].ptr - ptr
       compression_cso_v1:
-        value: (msb?(compression::none):(compression::deflate))
+        value: 'msb ? compression::none : compression::deflate'
       compression_zso_v1:
-        value: (msb?(compression::none):(compression::lz4))
+        value: 'msb ? compression::none : compression::lz4'
       compression_cso_v2:
-        value: ((size < _root.header.block_size)?(msb?(compression::lz4):(compression::deflate)):(compression::none))
+        value: '(size < _root.header.block_size) ? (msb ? compression::lz4 : compression::deflate) : compression::none'
       compression:
         value: |
           (
             _root.header.flavour == "C"
             ?
-            (_root.header.version<=1?compression_cso_v1:compression_cso_v2)
+            (_root.header.version<=1 ? compression_cso_v1 : compression_cso_v2)
             :
-            (_root.header.flavour == "Z"?compression_zso_v1:(compression::unknown))
+            (_root.header.flavour == "Z" ? compression_zso_v1 : compression::unknown)
           )
       block_uncompressed:
         pos: ptr
@@ -89,8 +89,8 @@ types:
         size: size
         process: kaitai.compress.lz4
       block:
-        value: ((compression==(compression::deflate))?block_deflate:((compression==(compression::lz4))?block_lz4:block_uncompressed))
-        if: compression!=compression::unknown
+        value: '(compression == compression::deflate) ? block_deflate : ((compression == compression::lz4) ? block_lz4 : block_uncompressed)'
+        if: compression != compression::unknown
   header:
     seq:
       - id: flavour
@@ -100,7 +100,7 @@ types:
           "Z" for ZSO, "C" for CSO"
       - id: signature
         -orig-id: magic
-        contents: ["ISO"]
+        contents: "ISO"
       - id: header_size
         -orig-id: header_size
         type: u4
