@@ -3,7 +3,10 @@ meta:
   title: Compressed ISO
   application:
     - Sony PSP custom firmwares
+    - Compressed ISO9660 converter by Booster
     - maxcso
+    - CSOMaker
+    - PPSSPP
   file-extension:
     - cso
     - zso
@@ -15,6 +18,10 @@ meta:
   license: ISC
 
 doc: |
+  This is a file format used in Sony PSP custom firmwares to compress ISO images, that are on-the-fly decompressed by the kernel, to allow to place more software onto a flash card. Some games tolerate such procedure well, other ones have lags in some points, another ones become completely unenjoyable.
+  AFAIK this format is not used for compressing and mounting ISO images for PCs.
+  The `doc`s in this format were mostly copied from the readmes available in `doc-ref`s.
+
   The original CSO format was created by BOOSTER.
   This document includes an experimental v2 format of CSO, proposed by Unknown W. Brackets.
   A CSO file consists of a file header, index section, and data section.
